@@ -142,6 +142,92 @@ if (direction == 'R')
 - Use mathematical formulas to calculate crossings directly
 - Part 1 can be simple; Part 2 often requires optimization
 
+## Day 2 Lessons Learned
+
+### Problem: Finding Invalid IDs (Repeated Patterns)
+- **Part 1**: IDs are invalid if pattern is repeated exactly twice (11, 1212, 123123)
+- **Part 2**: IDs are invalid if pattern is repeated at least twice (includes 123123123, 1111111, etc.)
+
+### Key Insights
+
+#### 1. Pattern Detection Algorithm
+For checking if a number is made of repeated patterns:
+```csharp
+// Try all possible pattern lengths from 1 to length/2
+for (int patternLength = 1; patternLength <= length / 2; patternLength++)
+{
+    if (length % patternLength == 0) // Must divide evenly
+    {
+        string pattern = idStr.Substring(0, patternLength);
+        // Check if entire string is this pattern repeated
+    }
+}
+```
+
+**Why this works:**
+- Any repeated pattern must divide the total length evenly
+- Only need to check patterns up to half the length (minimum 2 repetitions)
+- Check divisors first to avoid unnecessary string comparisons
+
+#### 2. Code Reuse Between Parts
+When Part 2 is a generalization of Part 1:
+- Keep infrastructure methods identical (ParseRange, FindInvalidIdsInRange, SumInvalidIds)
+- Only modify core logic (IsInvalidId)
+- Copy tests structure but adapt expected results
+
+#### 3. LINQ for Functional Clarity
+Prefer LINQ for complex multi-step operations:
+```csharp
+public static long SumInvalidIds(string input)
+{
+    return input.Split(',')
+        .SelectMany(range =>
+        {
+            var (start, end) = ParseRange(range.Trim());
+            return FindInvalidIdsInRange(start, end);
+        })
+        .Sum();
+}
+```
+
+**Benefits:**
+- Eliminates mutable state (no sum variable, no nested loops)
+- Lower ATP mass (40 → 16, 60% reduction)
+- More declarative and easier to understand
+
+#### 4. File Path Handling in Program.cs
+```csharp
+// Use absolute paths to avoid working directory issues
+string inputPath = @"c:\mjolner-code\AdventOfCode2025\Day02\input.txt";
+string input = File.ReadAllText(inputPath).Replace("\n", "").Replace("\r", "");
+```
+
+**Why:**
+- `dotnet run` working directory can vary
+- Relative paths (`../input.txt`) often fail
+- Absolute paths ensure reliability
+
+#### 5. Efficient Range Processing
+For large ranges (1188511880-1188511890):
+- Use `long` instead of `int` for ID storage
+- Still iterate sequentially (no clever math optimization needed)
+- Pattern checking is O(n) per number but n is small (< 10 digits)
+
+#### 6. Test Strategy for Pattern Variations
+Test various repetition counts:
+- 2 times: 11, 1212, 123123
+- 3 times: 123123123
+- 5 times: 1212121212  
+- 7 times: 1111111
+- Non-repeated: 123
+
+This ensures algorithm works for any repetition count ≥ 2.
+
+### Edge Cases Discovered
+- Single digit numbers (1-9) cannot be invalid (need at least 2 repetitions)
+- Numbers like 111 (3 times) vs 1111 (4 times) - both invalid in Part 2
+- Large numbers still process efficiently (string operations on ~10 digits)
+
 ## Completed Puzzles
 
 ### Day 1
@@ -150,6 +236,17 @@ if (direction == 'R')
 - **Key Classes**: `SafeDial`, `SafeDialAdvanced`
 - **Tests**: 19 tests each, all passing
 - **Special Notes**: Part 2 required mathematical optimization for zero crossing detection
+
+### Day 2
+- **Part 1 Answer**: 28846518423
+- **Part 2 Answer**: 31578210022
+- **Key Classes**: `InvalidIdFinder`, `InvalidIdFinderAdvanced`
+- **Tests**: 9 tests (Part 1), 6 tests (Part 2), all passing
+- **Special Notes**: 
+  - Part 1: IDs repeated exactly twice
+  - Part 2: IDs repeated at least twice (generalization)
+  - Used LINQ for cleaner functional approach in SumInvalidIds
+  - Absolute file paths needed for input reading in Program.cs
 
 ## Common Patterns
 
