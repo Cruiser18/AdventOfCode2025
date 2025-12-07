@@ -1,33 +1,26 @@
 {
   "format": 1,
   "restore": {
-    "C:\\mjolner-code\\AdventOfCode2025\\Day01\\Solution2\\Solution2.csproj": {}
+    "E:\\Development\\AdventOfCode2025\\Day01\\Solution2\\Solution2.csproj": {}
   },
   "projects": {
-    "C:\\mjolner-code\\AdventOfCode2025\\Day01\\Solution2\\Solution2.csproj": {
+    "E:\\Development\\AdventOfCode2025\\Day01\\Solution2\\Solution2.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\mjolner-code\\AdventOfCode2025\\Day01\\Solution2\\Solution2.csproj",
+        "projectUniqueName": "E:\\Development\\AdventOfCode2025\\Day01\\Solution2\\Solution2.csproj",
         "projectName": "Solution2",
-        "projectPath": "C:\\mjolner-code\\AdventOfCode2025\\Day01\\Solution2\\Solution2.csproj",
-        "packagesPath": "C:\\Users\\csu\\.nuget\\packages\\",
-        "outputPath": "C:\\mjolner-code\\AdventOfCode2025\\Day01\\Solution2\\obj\\",
+        "projectPath": "E:\\Development\\AdventOfCode2025\\Day01\\Solution2\\Solution2.csproj",
+        "packagesPath": "C:\\Users\\chris\\.nuget\\packages\\",
+        "outputPath": "E:\\Development\\AdventOfCode2025\\Day01\\Solution2\\obj\\",
         "projectStyle": "PackageReference",
-        "fallbackFolders": [
-          "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
-        ],
         "configFilePaths": [
-          "C:\\Users\\csu\\AppData\\Roaming\\NuGet\\NuGet.Config",
-          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
-          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
+          "C:\\Users\\chris\\AppData\\Roaming\\NuGet\\NuGet.Config"
         ],
         "originalTargetFrameworks": [
           "net9.0"
         ],
         "sources": {
-          "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
-          "https://api.nuget.org/v3/index.json": {},
-          "https://nuget.pkg.github.com/telia-company/index.json": {}
+          "https://api.nuget.org/v3/index.json": {}
         },
         "frameworks": {
           "net9.0": {
@@ -45,7 +38,7 @@
           "auditLevel": "low",
           "auditMode": "direct"
         },
-        "SdkAnalysisLevel": "10.0.100"
+        "SdkAnalysisLevel": "9.0.300"
       },
       "frameworks": {
         "net9.0": {
@@ -82,7 +75,7 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.100/PortableRuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.301/PortableRuntimeIdentifierGraph.json"
         }
       }
     }
