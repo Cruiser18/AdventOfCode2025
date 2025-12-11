@@ -95,3 +95,4 @@ C:\mjolner-code\AdventOfCode2025\Day01\Solution1\obj\Debug\net9.0\refint\Solutio
 C:\mjolner-code\AdventOfCode2025\Day01\Solution1\obj\Debug\net9.0\Solution1.pdb
 C:\mjolner-code\AdventOfCode2025\Day01\Solution1\obj\Debug\net9.0\Solution1.genruntimeconfig.cache
 C:\mjolner-code\AdventOfCode2025\Day01\Solution1\obj\Debug\net9.0\ref\Solution1.dll
+C:\mjolner-code\AdventOfCode2025\Day01\Solution1\obj\Debug\net9.0\Solution1.sourcelink.json
