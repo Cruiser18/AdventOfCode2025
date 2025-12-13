@@ -186,13 +186,155 @@ public class IndicatorLight
         // Parse the machine configuration for joltage
         var (targetJoltage, buttons) = ParseMachineForJoltage(machine);
         
-        // Solve using integer linear programming
-        return SolveIntegerLP(targetJoltage, buttons);
+        // Reset machine-specific cache
+        currentMachineButtons = "";
+        
+        // Use recursive approach based on Part 1 logic
+        return SolveJoltageRecursive(targetJoltage, buttons);
     }
 
     public static long SolveTotalMinimumPressesForJoltage(string[] input)
     {
         return input.Sum(machine => SolveMinimumPressesForJoltage(machine));
+    }
+
+    // Cache needs to be per-machine since button configurations differ
+    private static Dictionary<string, Dictionary<string, long>> joltageCachePerMachine = new Dictionary<string, Dictionary<string, long>>();
+    private static string currentMachineButtons = "";
+
+    private static long SolveJoltageRecursive(int[] target, List<int[]> buttons)
+    {
+        // Base case: all zeros
+        if (target.All(x => x == 0))
+        {
+            return 0;
+        }
+
+        // Check if any target is negative
+        if (target.Any(x => x < 0))
+        {
+            return long.MaxValue; // Impossible
+        }
+
+        // Create cache key based on buttons and target
+        if (string.IsNullOrEmpty(currentMachineButtons))
+        {
+            currentMachineButtons = string.Join(";", buttons.Select(b => string.Join(",", b)));
+        }
+        
+        if (!joltageCachePerMachine.ContainsKey(currentMachineButtons))
+        {
+            joltageCachePerMachine[currentMachineButtons] = new Dictionary<string, long>();
+        }
+        
+        var cache = joltageCachePerMachine[currentMachineButtons];
+        string targetKey = string.Join(",", target);
+        if (cache.TryGetValue(targetKey, out long cached))
+        {
+            return cached;
+        }
+
+        // Compute the parity pattern we need (odd=1, even=0)
+        int[] parityPattern = target.Select(x => x % 2).ToArray();
+
+        // Use Part 1 GF(2) solver to find all button combinations that give this parity
+        var validPatterns = FindAllButtonPatterns(parityPattern, buttons);
+
+        if (validPatterns.Count == 0)
+        {
+            // No valid patterns found - this configuration is impossible
+            cache[targetKey] = long.MaxValue;
+            return long.MaxValue;
+        }
+
+        long minPresses = long.MaxValue;
+
+        foreach (var pattern in validPatterns)
+        {
+            // Apply this pattern (press each button in the pattern once)
+            int[] newTarget = (int[])target.Clone();
+
+            int buttonsPressed = pattern.Count;
+            foreach (int buttonIdx in pattern)
+            {
+                for (int i = 0; i < target.Length; i++)
+                {
+                    newTarget[i] -= buttons[buttonIdx][i];
+                }
+            }
+
+            // Check if all are non-negative and even
+            bool valid = true;
+            for (int i = 0; i < newTarget.Length; i++)
+            {
+                if (newTarget[i] < 0 || newTarget[i] % 2 != 0)
+                {
+                    valid = false;
+                    break;
+                }
+            }
+
+            if (valid)
+            {
+                // Divide by 2 and recurse
+                int[] halved = newTarget.Select(x => x / 2).ToArray();
+                long recursiveResult = SolveJoltageRecursive(halved, buttons);
+
+                if (recursiveResult != long.MaxValue)
+                {
+                    long totalPresses = buttonsPressed + 2 * recursiveResult;
+                    minPresses = Math.Min(minPresses, totalPresses);
+                }
+            }
+        }
+
+        cache[targetKey] = minPresses;
+        return minPresses;
+    }
+
+    private static List<List<int>> FindAllButtonPatterns(int[] targetParity, List<int[]> buttons)
+    {
+        // Find all combinations of buttons (each pressed 0 or 1 times) that give targetParity
+        int numButtons = buttons.Count;
+        int numCounters = targetParity.Length;
+        var validPatterns = new List<List<int>>();
+
+        // Try all 2^numButtons combinations
+        for (int mask = 0; mask < (1 << numButtons); mask++)
+        {
+            int[] result = new int[numCounters];
+            var pattern = new List<int>();
+
+            for (int b = 0; b < numButtons; b++)
+            {
+                if ((mask & (1 << b)) != 0)
+                {
+                    pattern.Add(b);
+                    for (int i = 0; i < numCounters; i++)
+                    {
+                        result[i] ^= buttons[b][i]; // XOR for GF(2)
+                    }
+                }
+            }
+
+            // Check if this gives the target parity
+            bool matches = true;
+            for (int i = 0; i < numCounters; i++)
+            {
+                if (result[i] != targetParity[i])
+                {
+                    matches = false;
+                    break;
+                }
+            }
+
+            if (matches)
+            {
+                validPatterns.Add(pattern);
+            }
+        }
+
+        return validPatterns;
     }
 
     private static (int[] target, List<int[]> buttons) ParseMachineForJoltage(string machine)
@@ -219,6 +361,7 @@ public class IndicatorLight
         return (target, buttons);
     }
 
+    /* OLD ILP APPROACH - REPLACED WITH RECURSIVE PARITY METHOD
     private static long SolveIntegerLP(int[] target, List<int[]> buttons)
     {
         int numCounters = target.Length;
@@ -363,15 +506,73 @@ public class IndicatorLight
         // Use a smarter search strategy based on number of free variables
         long minSum = long.MaxValue;
         int maxTarget = target.Max();
+        int sumTarget = target.Sum();
 
-        if (freeVars.Count <= 3)
+        // For very complex cases with many free variables, use randomized search
+        if (freeVars.Count > 7)
         {
-            // Exhaustive search for small number of free variables
-            int searchDepth = freeVars.Count == 1 ? Math.Min(maxTarget * 2, 500) :
-                             (freeVars.Count == 2 ? Math.Min(maxTarget, 250) :
-                              Math.Min(maxTarget / 2, 150));
+            // Start with all zeros
+            long[] testVars = new long[freeVars.Count];
+            long sum = EvaluateSolution(testVars);
+            if (sum < minSum) minSum = sum;
 
-            void SearchExhaustive(int idx, long[] values)
+            // Randomized search with much more probes
+            Random rnd = new Random(42);
+            for (int probe = 0; probe < 2000000; probe++)
+            {
+                for (int i = 0; i < freeVars.Count; i++)
+                {
+                    // Try different strategies for different probes
+                    if (probe < 500000)
+                    {
+                        testVars[i] = rnd.Next(0, Math.Min(maxTarget, 300));
+                    }
+                    else if (probe < 1000000)
+                    {
+                        testVars[i] = rnd.Next(0, Math.Min(sumTarget, 600));
+                    }
+                    else
+                    {
+                        testVars[i] = rnd.Next(0, 1000);
+                    }
+                }
+                
+                sum = EvaluateSolution(testVars);
+                if (sum < minSum) minSum = sum;
+            }
+
+            // Hill climbing from best found so far
+            for (int iter = 0; iter < 5000; iter++)
+            {
+                bool improved = false;
+                for (int i = 0; i < freeVars.Count; i++)
+                {
+                    // Try ±1
+                    for (int delta = -1; delta <= 1; delta++)
+                    {
+                        if (delta == 0) continue;
+                        long oldVal = testVars[i];
+                        testVars[i] = Math.Max(0, oldVal + delta);
+                        
+                        sum = EvaluateSolution(testVars);
+                        if (sum < minSum && sum != long.MaxValue)
+                        {
+                            minSum = sum;
+                            improved = true;
+                        }
+                        else
+                        {
+                            testVars[i] = oldVal;
+                        }
+                    }
+                }
+                if (!improved) break;
+            }
+        }
+        else
+        {
+            // Branch and bound search for reasonable-sized problems
+            void BranchAndBoundSearch(int idx, long[] values, long currentPartialSum)
             {
                 if (idx == freeVars.Count)
                 {
@@ -380,72 +581,71 @@ public class IndicatorLight
                     return;
                 }
 
-                for (long v = 0; v <= searchDepth; v++)
+                // Calculate upper bound for this free variable based on constraints
+                long upperBound = Math.Max(maxTarget * 2, sumTarget);
+                
+                // For the first few free variables, use even larger bounds
+                if (idx < 2)
                 {
+                    upperBound = Math.Min(upperBound * 2, 1000);
+                }
+                
+                // Try to find a tighter bound by looking at the constraints
+                for (int row = 0; row < currentRow; row++)
+                {
+                    int pivotCol = pivotCols[row];
+                    if (pivotCol == -1) continue;
+                    
+                    // Get coefficient of current free variable in this equation
+                    double coeff = aug[row, freeVars[idx]];
+                    if (Math.Abs(coeff) < 0.001) continue;
+                    
+                    // Calculate what the RHS would be with current assignments
+                    double rhs = aug[row, numButtons];
+                    for (int i = 0; i < idx; i++)
+                    {
+                        rhs -= aug[row, freeVars[i]] * values[i];
+                    }
+                    
+                    // If coeff is positive, increasing this free var could help
+                    if (coeff > 0.001)
+                    {
+                        long bound = (long)Math.Ceiling((rhs + maxTarget) / coeff);
+                        if (bound > 0 && bound < upperBound)
+                        {
+                            upperBound = bound;
+                        }
+                    }
+                }
+                
+                // Ensure minimum exploration
+                upperBound = Math.Max(upperBound, 50);
+
+                for (long v = 0; v <= upperBound; v++)
+                {
+                    // Prune if adding even the minimum possible from remaining variables exceeds current best
+                    long estimatedMin = currentPartialSum + v;
+                    if (estimatedMin >= minSum) break;
+
                     values[idx] = v;
+                    BranchAndBoundSearch(idx + 1, values, currentPartialSum + v);
                     
-                    // Prune if partial sum already exceeds best
-                    if (values.Take(idx + 1).Sum() < minSum)
+                    // Additional pruning
+                    if (minSum < long.MaxValue && v > 0)
                     {
-                        SearchExhaustive(idx + 1, values);
+                        long recentBest = EvaluateSolution(values);
+                        if (recentBest == long.MaxValue && v > 10)
+                        {
+                            break;
+                        }
                     }
                 }
             }
 
-            SearchExhaustive(0, new long[freeVars.Count]);
-        }
-        else
-        {
-            // For many free variables, use greedy + local search
-            long[] bestFreeVars = new long[freeVars.Count];
-            
-            // Start with all zeros
-            long currentBest = EvaluateSolution(bestFreeVars);
-            if (currentBest < minSum) minSum = currentBest;
-
-            // Try incrementing each free variable individually and take the best
-            int maxIterations = Math.Min(100, maxTarget);
-            for (int iter = 0; iter < maxIterations; iter++)
-            {
-                bool improved = false;
-                
-                for (int i = 0; i < freeVars.Count; i++)
-                {
-                    // Try incrementing this free variable
-                    bestFreeVars[i]++;
-                    long newSum = EvaluateSolution(bestFreeVars);
-                    
-                    if (newSum < minSum && newSum != long.MaxValue)
-                    {
-                        minSum = newSum;
-                        improved = true;
-                    }
-                    else
-                    {
-                        // Revert if no improvement
-                        bestFreeVars[i]--;
-                    }
-                }
-                
-                if (!improved) break; // Local optimum reached
-            }
-
-            // Also try some random probing with wider range
-            Random rnd = new Random(42);
-            int probes = Math.Min(10000, maxTarget * 10);
-            for (int probe = 0; probe < probes; probe++)
-            {
-                long[] testVars = new long[freeVars.Count];
-                for (int i = 0; i < freeVars.Count; i++)
-                {
-                    testVars[i] = rnd.Next(0, Math.Min(maxTarget, 500));
-                }
-                
-                long sum = EvaluateSolution(testVars);
-                if (sum < minSum) minSum = sum;
-            }
+            BranchAndBoundSearch(0, new long[freeVars.Count], 0);
         }
 
         return minSum;
     }
+    */
 }
